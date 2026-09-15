@@ -1,30 +1,19 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Default fallback credentials provided for Supabase project
-const DEFAULT_SUPABASE_URL = 'https://qfqwrnrjdnxqlprmbwkw.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmcXdybnJqZG54cWxwcm1id2t3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MDI0MzIsImV4cCI6MjA5OTM3ODQzMn0.XJibLM9_ot8oQf_ovb3UHd61FvWX6rxy6meDNH4fgIw';
-
-// Read from env vars, localStorage overrides, or default fallbacks
+// Read exclusively from environment variables or user localStorage settings
 export function getSupabaseCredentials() {
   const env = (import.meta as any).env || {};
-  const envUrl = env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
-  const envKey = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_ANON_KEY;
+  const envUrl = (env.VITE_SUPABASE_URL || '').trim();
+  const envKey = (env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim();
 
-  let localUrl = localStorage.getItem('supabase_url') || envUrl;
-  let localKey = localStorage.getItem('supabase_anon_key') || envKey;
+  const localUrl = (localStorage.getItem('supabase_url') || envUrl).trim();
+  let localKey = (localStorage.getItem('supabase_anon_key') || envKey).trim();
 
-  // Auto-clean any invalid or legacy keys from localStorage (Supabase anon keys must start with 'eyJ')
-  if (localKey && (!localKey.startsWith('eyJ') || localKey.startsWith('sbp_') || localKey.includes('service_role'))) {
-    console.warn('Clearing invalid non-JWT key from localStorage, falling back to default anon key');
+  // Guard against invalid or sensitive key formats
+  if (localKey && (localKey.startsWith('sbp_') || localKey.includes('service_role'))) {
+    console.warn('Secret API key detected in client context. Clearing stored key.');
     localStorage.removeItem('supabase_anon_key');
-    localKey = DEFAULT_SUPABASE_ANON_KEY;
-    supabaseInstance = null;
-  }
-
-  // Also ensure URL is set
-  if (!localUrl || localUrl.includes('placeholder')) {
-    localStorage.removeItem('supabase_url');
-    localUrl = DEFAULT_SUPABASE_URL;
+    localKey = '';
     supabaseInstance = null;
   }
 
